@@ -1,4 +1,4 @@
-name: Build, Push Docker Images, and Deploy to Kubernetes
+name: Build, Push, and Deploy to Local Kubernetes
 
 on:
   push:
@@ -8,93 +8,51 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
-    
+    runs-on: self-hosted  # Uses your local runner
     steps:
-      # Step 1: Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Docker
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      # Step 3: Log in to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 4: Build and push backend Docker image
       - name: Build and push backend Docker image
         run: |
           cd backend
-          docker build -t shayandanish/food-traceability-backend:v2 .
+          docker build -t shayandanish/food-traceability-backend:v2 \
+                       -t shayandanish/food-traceability-backend:latest .
           docker push shayandanish/food-traceability-backend:v2
+          docker push shayandanish/food-traceability-backend:latest
 
-      # Step 5: Build and push frontend Docker image
       - name: Build and push frontend Docker image
         run: |
           cd frontend
           docker build -t shayandanish/food-traceability-frontend:latest .
           docker push shayandanish/food-traceability-frontend:latest
 
-      # Step 6: Set up kubectl
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'v1.28.0'
-
-      # Step 7: Configure Kubernetes context
-      - name: Configure Kubernetes context
-        env:
-          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG }}
-        run: |
-          mkdir -p $HOME/.kube
-          echo "$KUBE_CONFIG_DATA" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-          
-          # Debug: Show (sanitized) config structure
-          echo "Kubeconfig clusters:"
-          kubectl config get-clusters || echo "Failed to get clusters"
-          
-          echo "Testing connection..."
-          kubectl cluster-info || echo "Failed to connect to cluster"
-
-      # Step 8: Deploy backend to Kubernetes
       - name: Deploy backend to Kubernetes
         run: |
-          echo "Deploying backend to Kubernetes..."
-          kubectl set image deployment/backend-deployment backend=shayandanish/food-traceability-backend:v2 -n default || echo "Failed to update image"
-          kubectl rollout restart deployment/backend-deployment -n default || echo "Failed to restart deployment"
-          kubectl rollout status deployment/backend-deployment -n default --timeout=300s || echo "Rollout status check failed"
+          echo "Deploying backend..."
+          kubectl set image deployment/backend-deployment backend=shayandanish/food-traceability-backend:v2 -n default
+          kubectl rollout restart deployment/backend-deployment -n default
+          kubectl rollout status deployment/backend-deployment -n default --timeout=300s
 
-      # Step 9: Deploy frontend to Kubernetes
       - name: Deploy frontend to Kubernetes
         run: |
-          echo "Deploying frontend to Kubernetes..."
-          kubectl set image deployment/frontend-deployment frontend=shayandanish/food-traceability-frontend:latest -n default || echo "Failed to update image"
-          kubectl rollout restart deployment/frontend-deployment -n default || echo "Failed to restart deployment"
-          kubectl rollout status deployment/frontend-deployment -n default --timeout=300s || echo "Rollout status check failed"
+          echo "Deploying frontend..."
+          kubectl set image deployment/frontend-deployment frontend=shayandanish/food-traceability-frontend:latest -n default
+          kubectl rollout restart deployment/frontend-deployment -n default
+          kubectl rollout status deployment/frontend-deployment -n default --timeout=300s
 
-      # Step 10: Verify deployment
       - name: Verify deployment
         run: |
-          echo "=== Verification ==="
+          echo "=== Deployment Status ==="
           kubectl get deployments -n default
           kubectl get pods -n default
-          
-          # Check backend pod logs
-          POD_NAME=$(kubectl get pods -n default -l app=backend -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-          if [ -n "$POD_NAME" ]; then
-            echo "Backend pod logs (last 10 lines):"
-            kubectl logs -n default $POD_NAME --tail=10 || echo "Failed to get logs"
-          fi
-          
-          # Check frontend pod logs
-          POD_NAME=$(kubectl get pods -n default -l app=frontend -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-          if [ -n "$POD_NAME" ]; then
-            echo "Frontend pod logs (last 10 lines):"
-            kubectl logs -n default $POD_NAME --tail=10 || echo "Failed to get logs"
-          fi
+          echo "=== Backend Pod Logs ==="
+          kubectl logs -n default -l app=backend --tail=10 || echo "No backend logs"
+          echo "=== Frontend Pod Logs ==="
+          kubectl logs -n default -l app=frontend --tail=10 || echo "No frontend logs"
