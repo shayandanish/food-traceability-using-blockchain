@@ -1,0 +1,24 @@
+version: '1'
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8545:8545"  # Expose backend port for Ethereum node (Hardhat)
+    environment:
+      - NETWORK=localhost  # You can add environment variables for your backend
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "80:80"  # Expose frontend port for Nginx
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
