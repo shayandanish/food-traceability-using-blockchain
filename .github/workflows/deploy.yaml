@@ -15,18 +15,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Step 2: Set up Docker for both frontend and backend
       - name: Set up Docker
         uses: docker/setup-buildx-action@v1
 
+      # Step 3: Log in to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Step 4: Build Docker images for backend and frontend (if needed)
       - name: Build backend Docker image
         run: |
           cd backend
@@ -45,12 +49,13 @@ jobs:
         with:
           version: 'v1.21.2'
 
+      # Step 6: Set the KUBECONFIG using GitHub Secrets
       - name: Configure Kubernetes context
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig.yaml
           export KUBECONFIG=kubeconfig.yaml
 
-      # Step 6: Deploy backend to Kubernetes
+      # Step 7: Deploy backend to Kubernetes
       - name: Deploy backend to Kubernetes
         run: |
           echo "Deploying backend to Kubernetes..."
@@ -58,7 +63,7 @@ jobs:
           kubectl rollout restart deployment/backend-deployment -n default
           kubectl rollout status deployment/backend-deployment -n default --timeout=300s
 
-      # Step 7: Deploy frontend to Kubernetes
+      # Step 8: Deploy frontend to Kubernetes
       - name: Deploy frontend to Kubernetes
         run: |
           echo "Deploying frontend to Kubernetes..."
@@ -66,7 +71,7 @@ jobs:
           kubectl rollout restart deployment/frontend-deployment -n default
           kubectl rollout status deployment/frontend-deployment -n default --timeout=300s
 
-      # Step 8: Verify deployment
+      # Step 9: Verify deployment
       - name: Verify deployment
         run: |
           echo "=== Verification ==="
