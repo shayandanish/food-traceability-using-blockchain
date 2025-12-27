@@ -6,11 +6,10 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
-  labels:
-    ingress.class: "nginx"  # Ensure NGINX Ingress is used
 spec:
+  ingressClassName: nginx
   rules:
-    - host: frontend.local  # Use your desired hostname for frontend
+    - host: frontend.local
       http:
         paths:
           - path: /
@@ -29,11 +28,10 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
-  labels:
-    ingress.class: "nginx"  # Ensure NGINX Ingress is used
 spec:
+  ingressClassName: nginx
   rules:
-    - host: backend.local  # Use your desired hostname for backend
+    - host: backend.local
       http:
         paths:
           - path: /
